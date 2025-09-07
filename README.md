@@ -22,4 +22,3 @@ A package that save developers time from form handling and making forms
 - [ ] Form analytics & debug mode (track time spent, log all changes)  
 
 
-
