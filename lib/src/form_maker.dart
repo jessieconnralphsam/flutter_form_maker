@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/text_field_config.dart';
 
-/// Main FormMaker widget that handles multiple text fields automatically
-/// No need to create controllers or manage dispose - everything is handled internally
 class FormMaker extends StatefulWidget {
   /// List of text field configurations
   final List<TextFieldConfig> fields;
