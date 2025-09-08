@@ -1,5 +1,23 @@
 flutter_form_maker
 
+<p align="left">
+  <svg width="50" height="50" viewBox="0 0 36 36">
+    <path d="M18 2.0845
+             a 15.9155 15.9155 0 0 1 0 31.831
+             a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="#eee"
+          stroke-width="3"/>
+    <path d="M18 2.0845
+             a 15.9155 15.9155 0 0 1 0 0.31831"
+          fill="none"
+          stroke="#4caf50"
+          stroke-width="3"/>
+    <text x="18" y="20.35" font-size="6" text-anchor="middle" fill="#4caf50">1%</text>
+  </svg>
+</p>
+
+
 flutter_form_maker is a Flutter package that makes working with forms faster and easier. Instead of spending lots of time building and managing forms by hand, this package gives developers ready-to-use tools that handle everything — from simple text fields to advanced features like file pickers and signature pads. It’s especially useful for apps like document management systems, where users need to fill out and sign many forms.
 
 What it is supposed to do:
