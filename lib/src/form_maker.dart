@@ -22,6 +22,12 @@ class FormMaker extends StatefulWidget {
   
   /// Spacing between fields
   final double fieldSpacing;
+  
+  /// Submit button style
+  final ButtonStyle? submitButtonStyle;
+  
+  /// Enable auto-validation
+  final AutovalidateMode autovalidateMode;
 
   const FormMaker({
     super.key,
@@ -32,6 +38,8 @@ class FormMaker extends StatefulWidget {
     this.showSubmitButton = true,
     this.submitButtonText = 'Submit',
     this.fieldSpacing = 16.0,
+    this.submitButtonStyle,
+    this.autovalidateMode = AutovalidateMode.disabled,
   });
 
   @override
@@ -42,6 +50,7 @@ class _FormMakerState extends State<FormMaker> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late Map<String, TextEditingController> _controllers;
   late Map<String, String> _values;
+  late Map<String, bool> _obscureTextStates; // For password visibility toggle
 
   @override
   void initState() {
@@ -52,11 +61,13 @@ class _FormMakerState extends State<FormMaker> {
   void _initializeControllers() {
     _controllers = {};
     _values = {};
+    _obscureTextStates = {};
     
     for (final field in widget.fields) {
       final controller = TextEditingController(text: field.initialValue ?? '');
       _controllers[field.key] = controller;
       _values[field.key] = field.initialValue ?? '';
+      _obscureTextStates[field.key] = field.shouldObscureText;
       
       // Listen to changes
       controller.addListener(() {
@@ -85,22 +96,67 @@ class _FormMakerState extends State<FormMaker> {
     }
   }
 
+  void _toggleObscureText(String fieldKey) {
+    setState(() {
+      _obscureTextStates[fieldKey] = !(_obscureTextStates[fieldKey] ?? false);
+    });
+  }
+
   Widget _buildTextField(TextFieldConfig config) {
+    final isPasswordField = config.fieldType == FieldType.password && !config.obscureText;
+    
     return TextFormField(
       controller: _controllers[config.key],
-      decoration: config.getDecoration(),
+      decoration: _buildDecoration(config, isPasswordField),
       style: config.textStyle,
       keyboardType: config.keyboardType,
-      obscureText: config.obscureText,
-      maxLines: config.maxLines,
+      obscureText: _obscureTextStates[config.key] ?? false,
+      maxLines: config.actualMaxLines,
+      maxLength: config.maxLength,
+      inputFormatters: config.inputFormatters,
       validator: config.defaultValidator,
+      autovalidateMode: widget.autovalidateMode,
+      textCapitalization: _getTextCapitalization(config.fieldType),
     );
+  }
+
+  InputDecoration _buildDecoration(TextFieldConfig config, bool isPasswordField) {
+    final baseDecoration = config.getDecoration();
+    
+    // Add password visibility toggle if it's a password field
+    if (isPasswordField) {
+      return baseDecoration.copyWith(
+        suffixIcon: IconButton(
+          icon: Icon(
+            (_obscureTextStates[config.key] ?? false) 
+                ? Icons.visibility_outlined 
+                : Icons.visibility_off_outlined,
+            color: config.suffixIconColor ?? Colors.grey.shade600,
+          ),
+          onPressed: () => _toggleObscureText(config.key),
+        ),
+      );
+    }
+    
+    return baseDecoration;
+  }
+
+  TextCapitalization _getTextCapitalization(FieldType fieldType) {
+    switch (fieldType) {
+      case FieldType.name:
+        return TextCapitalization.words;
+      case FieldType.multiline:
+        return TextCapitalization.sentences;
+      default:
+        return TextCapitalization.none;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
+      autovalidateMode: widget.autovalidateMode,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -121,6 +177,14 @@ class _FormMakerState extends State<FormMaker> {
             widget.submitButton ?? 
             ElevatedButton(
               onPressed: _handleSubmit,
+              style: widget.submitButtonStyle ?? ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD630),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+              ),
               child: Text(widget.submitButtonText),
             ),
           ],
@@ -140,5 +204,27 @@ class _FormMakerState extends State<FormMaker> {
     for (final controller in _controllers.values) {
       controller.clear();
     }
+  }
+
+  /// Reset form to initial values
+  void reset() {
+    for (final field in widget.fields) {
+      _controllers[field.key]?.text = field.initialValue ?? '';
+      _values[field.key] = field.initialValue ?? '';
+    }
+    _formKey.currentState?.reset();
+  }
+
+  /// Set value for a specific field
+  void setValue(String fieldKey, String value) {
+    if (_controllers.containsKey(fieldKey)) {
+      _controllers[fieldKey]?.text = value;
+      _values[fieldKey] = value;
+    }
+  }
+
+  /// Get value for a specific field
+  String? getValue(String fieldKey) {
+    return _values[fieldKey];
   }
 }
