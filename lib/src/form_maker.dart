@@ -64,23 +64,31 @@ class _FormMakerState extends State<FormMaker> {
     _obscureTextStates = {};
     
     for (final field in widget.fields) {
-      // Only create controllers for non-dropdown fields
+      // Create controllers for all non-dropdown fields (including date/time fields for display)
       if (field.fieldType != FieldType.dropdown) {
         final controller = TextEditingController(text: field.initialValue ?? '');
         _controllers[field.key] = controller;
         
-        // Listen to changes for text fields
-        controller.addListener(() {
-          _values[field.key] = controller.text;
-          if (widget.onChanged != null) {
-            widget.onChanged!(_values);
-          }
-        });
+        // Only add listeners for editable text fields, not date/time fields
+        if (!_isDateTimeField(field.fieldType)) {
+          controller.addListener(() {
+            _values[field.key] = controller.text;
+            if (widget.onChanged != null) {
+              widget.onChanged!(_values);
+            }
+          });
+        }
       }
       
       _values[field.key] = field.initialValue ?? '';
       _obscureTextStates[field.key] = field.shouldObscureText;
     }
+  }
+
+  bool _isDateTimeField(FieldType fieldType) {
+    return fieldType == FieldType.date || 
+           fieldType == FieldType.dateTime || 
+           fieldType == FieldType.time;
   }
 
   @override
@@ -116,10 +124,17 @@ class _FormMakerState extends State<FormMaker> {
   }
 
   Widget _buildField(FieldConfig config) {
-    if (config.fieldType == FieldType.dropdown) {
-      return _buildDropdownField(config);
-    } else {
-      return _buildTextField(config);
+    switch (config.fieldType) {
+      case FieldType.dropdown:
+        return _buildDropdownField(config);
+      case FieldType.date:
+        return _buildDateField(config);
+      case FieldType.dateTime:
+        return _buildDateTimeField(config);
+      case FieldType.time:
+        return _buildTimeField(config);
+      default:
+        return _buildTextField(config);
     }
   }
 
@@ -143,6 +158,119 @@ class _FormMakerState extends State<FormMaker> {
         dropdownColor: config.dropdownColor ?? Colors.white,
         style: config.dropdownStyle ?? const TextStyle(color: Colors.black),
         isExpanded: true,
+        autovalidateMode: widget.autovalidateMode,
+      ),
+    );
+  }
+
+  Widget _buildDateField(FieldConfig config) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: _controllers[config.key],
+        onTap: () async {
+          final DateTime? picked = await showDatePicker(
+            context: context,
+            initialDate: config.initialDate ?? DateTime.now(),
+            firstDate: config.firstDate ?? DateTime(1900),
+            lastDate: config.lastDate ?? DateTime(2100),
+          );
+          if (picked != null) {
+            final formattedDate = config.formatDate(picked);
+            _controllers[config.key]?.text = formattedDate;
+            _handleFieldChange(config.key, formattedDate);
+            if (config.onDateSelected != null) {
+              config.onDateSelected!(picked);
+            }
+          }
+        },
+        validator: config.defaultValidator,
+        decoration: config.getDecoration(),
+        style: config.textStyle,
+        readOnly: true,
+        autovalidateMode: widget.autovalidateMode,
+      ),
+    );
+  }
+
+  Widget _buildDateTimeField(FieldConfig config) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: _controllers[config.key],
+        onTap: () async {
+          final DateTime? pickedDate = await showDatePicker(
+            context: context,
+            initialDate: config.initialDate ?? DateTime.now(),
+            firstDate: config.firstDate ?? DateTime(1900),
+            lastDate: config.lastDate ?? DateTime(2100),
+          );
+          if (pickedDate != null) {
+            final TimeOfDay? pickedTime = await showTimePicker(
+              context: context,
+              initialTime: config.initialTime ?? TimeOfDay.now(),
+              builder: config.use24HourFormat
+                  ? (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          alwaysUse24HourFormat: true,
+                        ),
+                        child: child!,
+                      )
+                  : null,
+            );
+            if (pickedTime != null) {
+              final formattedDateTime = config.formatDateTime(pickedDate, pickedTime);
+              _controllers[config.key]?.text = formattedDateTime;
+              _handleFieldChange(config.key, formattedDateTime);
+              if (config.onDateSelected != null) {
+                config.onDateSelected!(pickedDate);
+              }
+              if (config.onTimeSelected != null) {
+                config.onTimeSelected!(pickedTime);
+              }
+            }
+          }
+        },
+        validator: config.defaultValidator,
+        decoration: config.getDecoration(),
+        style: config.textStyle,
+        readOnly: true,
+        autovalidateMode: widget.autovalidateMode,
+      ),
+    );
+  }
+
+  Widget _buildTimeField(FieldConfig config) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: _controllers[config.key],
+        onTap: () async {
+          final TimeOfDay? picked = await showTimePicker(
+            context: context,
+            initialTime: config.initialTime ?? TimeOfDay.now(),
+            builder: config.use24HourFormat
+                ? (context, child) => MediaQuery(
+                      data: MediaQuery.of(context).copyWith(
+                        alwaysUse24HourFormat: true,
+                      ),
+                      child: child!,
+                    )
+                : null,
+          );
+          if (picked != null) {
+            final formattedTime = config.formatTime(picked);
+            _controllers[config.key]?.text = formattedTime;
+            _handleFieldChange(config.key, formattedTime);
+            if (config.onTimeSelected != null) {
+              config.onTimeSelected!(picked);
+            }
+          }
+        },
+        validator: config.defaultValidator,
+        decoration: config.getDecoration(),
+        style: config.textStyle,
+        readOnly: true,
         autovalidateMode: widget.autovalidateMode,
       ),
     );

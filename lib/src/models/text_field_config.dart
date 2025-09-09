@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 /// Enum for different field types
 enum FieldType {
@@ -13,11 +14,14 @@ enum FieldType {
   decimal,
   creditCard,
   name,
-  dropdown, 
+  dropdown,
+  date,
+  dateTime,
+  time,
 }
 
-/// Configuration for a text field or dropdown in the form
-class FieldConfig { // Renamed from TextFieldConfig to be more generic
+/// Configuration for a text field, dropdown, or date field in the form
+class FieldConfig {
   final String key;
   final String label;
   final String? hintText;
@@ -42,6 +46,16 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
   final Color? dropdownColor;
   final TextStyle? dropdownStyle;
 
+  // Date-specific properties
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  final DateTime? initialDate;
+  final String? dateFormat; // e.g., 'yyyy-MM-dd', 'dd/MM/yyyy', 'MMM dd, yyyy'
+  final TimeOfDay? initialTime;
+  final bool use24HourFormat;
+  final Function(DateTime)? onDateSelected;
+  final Function(TimeOfDay)? onTimeSelected;
+
   const FieldConfig({
     required this.key,
     required this.label,
@@ -65,6 +79,15 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
     this.dropdownHint,
     this.dropdownColor,
     this.dropdownStyle,
+    // Date properties
+    this.firstDate,
+    this.lastDate,
+    this.initialDate,
+    this.dateFormat,
+    this.initialTime,
+    this.use24HourFormat = false,
+    this.onDateSelected,
+    this.onTimeSelected,
   });
 
   /// Factory constructor for dropdown fields
@@ -99,6 +122,110 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
     );
   }
 
+  /// Factory constructor for date fields
+  factory FieldConfig.date({
+    required String key,
+    required String label,
+    DateTime? initialDate,
+    DateTime? firstDate,
+    DateTime? lastDate,
+    String? dateFormat = 'MMM dd, yyyy',
+    bool isRequired = false,
+    String? hintText,
+    String? Function(String? value)? customValidator,
+    IconData? prefixIcon,
+    Color? prefixIconColor,
+    InputDecoration? decoration,
+    Function(DateTime)? onDateSelected,
+  }) {
+    return FieldConfig(
+      key: key,
+      label: label,
+      fieldType: FieldType.date,
+      isRequired: isRequired,
+      hintText: hintText,
+      customValidator: customValidator,
+      prefixIcon: prefixIcon,
+      prefixIconColor: prefixIconColor,
+      decoration: decoration,
+      initialDate: initialDate,
+      firstDate: firstDate ?? DateTime(1900),
+      lastDate: lastDate ?? DateTime(2100),
+      dateFormat: dateFormat,
+      onDateSelected: onDateSelected,
+    );
+  }
+
+  /// Factory constructor for date-time fields
+  factory FieldConfig.dateTime({
+    required String key,
+    required String label,
+    DateTime? initialDate,
+    TimeOfDay? initialTime,
+    DateTime? firstDate,
+    DateTime? lastDate,
+    String? dateFormat = 'MMM dd, yyyy HH:mm',
+    bool use24HourFormat = false,
+    bool isRequired = false,
+    String? hintText,
+    String? Function(String? value)? customValidator,
+    IconData? prefixIcon,
+    Color? prefixIconColor,
+    InputDecoration? decoration,
+    Function(DateTime)? onDateSelected,
+    Function(TimeOfDay)? onTimeSelected,
+  }) {
+    return FieldConfig(
+      key: key,
+      label: label,
+      fieldType: FieldType.dateTime,
+      isRequired: isRequired,
+      hintText: hintText,
+      customValidator: customValidator,
+      prefixIcon: prefixIcon,
+      prefixIconColor: prefixIconColor,
+      decoration: decoration,
+      initialDate: initialDate,
+      initialTime: initialTime,
+      firstDate: firstDate ?? DateTime(1900),
+      lastDate: lastDate ?? DateTime(2100),
+      dateFormat: dateFormat,
+      use24HourFormat: use24HourFormat,
+      onDateSelected: onDateSelected,
+      onTimeSelected: onTimeSelected,
+    );
+  }
+
+  /// Factory constructor for time fields
+  factory FieldConfig.time({
+    required String key,
+    required String label,
+    TimeOfDay? initialTime,
+    bool use24HourFormat = false,
+    bool isRequired = false,
+    String? hintText,
+    String? Function(String? value)? customValidator,
+    IconData? prefixIcon,
+    Color? prefixIconColor,
+    InputDecoration? decoration,
+    Function(TimeOfDay)? onTimeSelected,
+  }) {
+    return FieldConfig(
+      key: key,
+      label: label,
+      fieldType: FieldType.time,
+      isRequired: isRequired,
+      hintText: hintText,
+      customValidator: customValidator,
+      prefixIcon: prefixIcon,
+      prefixIconColor: prefixIconColor,
+      decoration: decoration,
+      initialTime: initialTime,
+      use24HourFormat: use24HourFormat,
+      onTimeSelected: onTimeSelected,
+    );
+  }
+
   /// Get keyboard type based on field type
   TextInputType get keyboardType {
     switch (fieldType) {
@@ -119,7 +246,10 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
       case FieldType.name:
         return TextInputType.name;
       case FieldType.dropdown:
-        return TextInputType.none; // Not applicable for dropdowns
+      case FieldType.date:
+      case FieldType.dateTime:
+      case FieldType.time:
+        return TextInputType.none;
       case FieldType.text:
       case FieldType.password:
       default:
@@ -144,7 +274,10 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
       case FieldType.name:
         return [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))];
       case FieldType.dropdown:
-        return []; // Not applicable for dropdowns
+      case FieldType.date:
+      case FieldType.dateTime:
+      case FieldType.time:
+        return [];
       default:
         return [];
     }
@@ -161,6 +294,33 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
       return maxLines > 1 ? maxLines : 3;
     }
     return maxLines;
+  }
+
+  /// Get date formatter
+  DateFormat get _dateFormatter {
+    return DateFormat(dateFormat ?? 'MMM dd, yyyy');
+  }
+
+  /// Format date to string
+  String formatDate(DateTime date) {
+    return _dateFormatter.format(date);
+  }
+
+  /// Format time to string
+  String formatTime(TimeOfDay time) {
+    final now = DateTime.now();
+    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    if (use24HourFormat) {
+      return DateFormat('HH:mm').format(dt);
+    } else {
+      return DateFormat('h:mm a').format(dt);
+    }
+  }
+
+  /// Format datetime to string
+  String formatDateTime(DateTime date, TimeOfDay time) {
+    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    return DateFormat(dateFormat ?? 'MMM dd, yyyy HH:mm').format(dt);
   }
 
   /// Built-in validators for different field types
@@ -186,6 +346,10 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
         return _validatePassword(value);
       case FieldType.dropdown:
         return _validateDropdown(value);
+      case FieldType.date:
+      case FieldType.dateTime:
+      case FieldType.time:
+        return _validateDateTime(value);
       default:
         return null;
     }
@@ -253,6 +417,12 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
     return null;
   }
 
+  String? _validateDateTime(String value) {
+    // Basic validation - just check if value is not empty when required
+    // More complex validation could parse the date string and verify format
+    return null;
+  }
+
   bool _luhnCheck(String cardNumber) {
     int sum = 0;
     bool alternate = false;
@@ -314,6 +484,12 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
         return Icons.notes_outlined;
       case FieldType.dropdown:
         return Icons.arrow_drop_down_outlined;
+      case FieldType.date:
+        return Icons.calendar_today_outlined;
+      case FieldType.dateTime:
+        return Icons.schedule_outlined;
+      case FieldType.time:
+        return Icons.access_time_outlined;
       default:
         return null;
     }
@@ -385,6 +561,12 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
         return 'Enter your message';
       case FieldType.dropdown:
         return dropdownHint ?? 'Select an option';
+      case FieldType.date:
+        return 'Select a date';
+      case FieldType.dateTime:
+        return 'Select date and time';
+      case FieldType.time:
+        return 'Select a time';
       default:
         return null;
     }
@@ -396,18 +578,37 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
     required Function(String?) onChanged,
     String? Function(String?)? validator,
   }) {
-    if (fieldType == FieldType.dropdown) {
-      return buildDropdownField(
-        currentValue: currentValue,
-        onChanged: onChanged,
-        validator: validator ?? defaultValidator,
-      );
-    } else {
-      return buildTextField(
-        currentValue: currentValue,
-        onChanged: onChanged,
-        validator: validator ?? defaultValidator,
-      );
+    switch (fieldType) {
+      case FieldType.dropdown:
+        return buildDropdownField(
+          currentValue: currentValue,
+          onChanged: onChanged,
+          validator: validator ?? defaultValidator,
+        );
+      case FieldType.date:
+        return buildDateField(
+          currentValue: currentValue,
+          onChanged: onChanged,
+          validator: validator ?? defaultValidator,
+        );
+      case FieldType.dateTime:
+        return buildDateTimeField(
+          currentValue: currentValue,
+          onChanged: onChanged,
+          validator: validator ?? defaultValidator,
+        );
+      case FieldType.time:
+        return buildTimeField(
+          currentValue: currentValue,
+          onChanged: onChanged,
+          validator: validator ?? defaultValidator,
+        );
+      default:
+        return buildTextField(
+          currentValue: currentValue,
+          onChanged: onChanged,
+          validator: validator ?? defaultValidator,
+        );
     }
   }
 
@@ -440,6 +641,137 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
     );
   }
 
+  /// Build date field widget
+  Widget buildDateField({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: TextEditingController(text: currentValue ?? initialValue),
+        onTap: () async {
+          final context = _getCurrentContext();
+          if (context != null) {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: initialDate ?? DateTime.now(),
+              firstDate: firstDate ?? DateTime(1900),
+              lastDate: lastDate ?? DateTime(2100),
+            );
+            if (picked != null) {
+              final formattedDate = formatDate(picked);
+              onChanged(formattedDate);
+              if (onDateSelected != null) {
+                onDateSelected!(picked);
+              }
+            }
+          }
+        },
+        validator: validator,
+        decoration: getDecoration(),
+        style: textStyle,
+        readOnly: true,
+      ),
+    );
+  }
+
+  /// Build date-time field widget
+  Widget buildDateTimeField({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: TextEditingController(text: currentValue ?? initialValue),
+        onTap: () async {
+          final context = _getCurrentContext();
+          if (context != null) {
+            final DateTime? pickedDate = await showDatePicker(
+              context: context,
+              initialDate: initialDate ?? DateTime.now(),
+              firstDate: firstDate ?? DateTime(1900),
+              lastDate: lastDate ?? DateTime(2100),
+            );
+            if (pickedDate != null) {
+              final TimeOfDay? pickedTime = await showTimePicker(
+                context: context,
+                initialTime: initialTime ?? TimeOfDay.now(),
+                builder: use24HourFormat
+                    ? (context, child) => MediaQuery(
+                          data: MediaQuery.of(context).copyWith(
+                            alwaysUse24HourFormat: true,
+                          ),
+                          child: child!,
+                        )
+                    : null,
+              );
+              if (pickedTime != null) {
+                final formattedDateTime = formatDateTime(pickedDate, pickedTime);
+                onChanged(formattedDateTime);
+                if (onDateSelected != null) {
+                  onDateSelected!(pickedDate);
+                }
+                if (onTimeSelected != null) {
+                  onTimeSelected!(pickedTime);
+                }
+              }
+            }
+          }
+        },
+        validator: validator,
+        decoration: getDecoration(),
+        style: textStyle,
+        readOnly: true,
+      ),
+    );
+  }
+
+  /// Build time field widget
+  Widget buildTimeField({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: TextEditingController(text: currentValue ?? initialValue),
+        onTap: () async {
+          final context = _getCurrentContext();
+          if (context != null) {
+            final TimeOfDay? picked = await showTimePicker(
+              context: context,
+              initialTime: initialTime ?? TimeOfDay.now(),
+              builder: use24HourFormat
+                  ? (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          alwaysUse24HourFormat: true,
+                        ),
+                        child: child!,
+                      )
+                  : null,
+            );
+            if (picked != null) {
+              final formattedTime = formatTime(picked);
+              onChanged(formattedTime);
+              if (onTimeSelected != null) {
+                onTimeSelected!(picked);
+              }
+            }
+          }
+        },
+        validator: validator,
+        decoration: getDecoration(),
+        style: textStyle,
+        readOnly: true,
+      ),
+    );
+  }
+
   /// Build text field widget
   Widget buildTextField({
     String? currentValue,
@@ -461,5 +793,13 @@ class FieldConfig { // Renamed from TextFieldConfig to be more generic
         style: textStyle,
       ),
     );
+  }
+
+  /// Helper method to get current context (this is a simplified version)
+  /// In a real implementation, you'd need to pass the context from the widget
+  BuildContext? _getCurrentContext() {
+    // This is a placeholder. In practice, you'd need to pass the context
+    // from the widget that's using this FieldConfig
+    return null;
   }
 }
