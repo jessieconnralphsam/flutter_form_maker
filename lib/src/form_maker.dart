@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'models/text_field_config.dart';
+import 'models/field_config.dart';
 
 class FormMaker extends StatefulWidget {
   /// List of field configurations
@@ -64,12 +64,9 @@ class _FormMakerState extends State<FormMaker> {
     _obscureTextStates = {};
     
     for (final field in widget.fields) {
-      // Create controllers for all non-dropdown fields (including date/time fields for display)
       if (field.fieldType != FieldType.dropdown) {
         final controller = TextEditingController(text: field.initialValue ?? '');
         _controllers[field.key] = controller;
-        
-        // Only add listeners for editable text fields, not date/time fields
         if (!_isDateTimeField(field.fieldType)) {
           controller.addListener(() {
             _values[field.key] = controller.text;
@@ -79,7 +76,6 @@ class _FormMakerState extends State<FormMaker> {
           });
         }
       }
-      
       _values[field.key] = field.initialValue ?? '';
       _obscureTextStates[field.key] = field.shouldObscureText;
     }
