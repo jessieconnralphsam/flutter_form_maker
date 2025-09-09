@@ -252,8 +252,7 @@ class FieldConfig {
         return TextInputType.none;
       case FieldType.text:
       case FieldType.password:
-      default:
-        return TextInputType.text;
+       return TextInputType.text;
     }
   }
 

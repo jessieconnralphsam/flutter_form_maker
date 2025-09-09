@@ -358,7 +358,7 @@ class _FormMakerState extends State<FormMaker> {
                 onPressed: _handleSubmit,
                 style: widget.submitButtonStyle ?? ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFD630),
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(22),
