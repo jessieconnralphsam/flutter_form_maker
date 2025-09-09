@@ -13,10 +13,11 @@ enum FieldType {
   decimal,
   creditCard,
   name,
+  dropdown, 
 }
 
-/// Configuration for a text field in the form
-class TextFieldConfig {
+/// Configuration for a text field or dropdown in the form
+class FieldConfig { // Renamed from TextFieldConfig to be more generic
   final String key;
   final String label;
   final String? hintText;
@@ -33,8 +34,15 @@ class TextFieldConfig {
   final IconData? suffixIcon;
   final Color? prefixIconColor;
   final Color? suffixIconColor;
+  
+  // Dropdown-specific properties
+  final List<String>? dropdownOptions;
+  final String? Function(String?)? onDropdownChanged;
+  final String? dropdownHint;
+  final Color? dropdownColor;
+  final TextStyle? dropdownStyle;
 
-  const TextFieldConfig({
+  const FieldConfig({
     required this.key,
     required this.label,
     this.hintText,
@@ -51,7 +59,45 @@ class TextFieldConfig {
     this.suffixIcon,
     this.prefixIconColor,
     this.suffixIconColor,
+    // Dropdown properties
+    this.dropdownOptions,
+    this.onDropdownChanged,
+    this.dropdownHint,
+    this.dropdownColor,
+    this.dropdownStyle,
   });
+
+  /// Factory constructor for dropdown fields
+  factory FieldConfig.dropdown({
+    required String key,
+    required String label,
+    required List<String> options,
+    String? initialValue,
+    bool isRequired = false,
+    String? hintText,
+    String? Function(String? value)? customValidator,
+    IconData? prefixIcon,
+    Color? prefixIconColor,
+    Color? dropdownColor,
+    TextStyle? dropdownStyle,
+    InputDecoration? decoration,
+  }) {
+    return FieldConfig(
+      key: key,
+      label: label,
+      fieldType: FieldType.dropdown,
+      initialValue: initialValue,
+      isRequired: isRequired,
+      hintText: hintText,
+      customValidator: customValidator,
+      prefixIcon: prefixIcon,
+      prefixIconColor: prefixIconColor,
+      dropdownOptions: options,
+      dropdownColor: dropdownColor,
+      dropdownStyle: dropdownStyle,
+      decoration: decoration,
+    );
+  }
 
   /// Get keyboard type based on field type
   TextInputType get keyboardType {
@@ -72,6 +118,8 @@ class TextFieldConfig {
         return TextInputType.number;
       case FieldType.name:
         return TextInputType.name;
+      case FieldType.dropdown:
+        return TextInputType.none; // Not applicable for dropdowns
       case FieldType.text:
       case FieldType.password:
       default:
@@ -95,6 +143,8 @@ class TextFieldConfig {
         ];
       case FieldType.name:
         return [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))];
+      case FieldType.dropdown:
+        return []; // Not applicable for dropdowns
       default:
         return [];
     }
@@ -134,6 +184,8 @@ class TextFieldConfig {
         return _validateCreditCard(value);
       case FieldType.password:
         return _validatePassword(value);
+      case FieldType.dropdown:
+        return _validateDropdown(value);
       default:
         return null;
     }
@@ -190,6 +242,13 @@ class TextFieldConfig {
   String? _validatePassword(String value) {
     if (value.length < 6) {
       return 'Password must be at least 6 characters long';
+    }
+    return null;
+  }
+
+  String? _validateDropdown(String value) {
+    if (dropdownOptions != null && !dropdownOptions!.contains(value)) {
+      return 'Please select a valid option';
     }
     return null;
   }
@@ -253,6 +312,8 @@ class TextFieldConfig {
         return Icons.person_outlined;
       case FieldType.multiline:
         return Icons.notes_outlined;
+      case FieldType.dropdown:
+        return Icons.arrow_drop_down_outlined;
       default:
         return null;
     }
@@ -263,13 +324,14 @@ class TextFieldConfig {
         InputDecoration(
           labelText: label,
           hintText: hintText ?? _getDefaultHint(),
-          labelStyle: const TextStyle(color: Color(0xFFFFD630)),
+          labelStyle: const TextStyle(color: Colors.grey),
+          floatingLabelStyle: const TextStyle(color: Color(0xFFFFD630)),
           hintStyle: const TextStyle(color: Colors.grey),
           errorStyle: const TextStyle(color: Colors.red),
           prefixIcon: defaultPrefixIcon != null 
               ? Icon(
                   defaultPrefixIcon,
-                  color: prefixIconColor ?? Colors.grey.shade600,
+                  color: prefixIconColor ?? const Color(0xFFFFD630),
                 ) 
               : null,
           suffixIcon: suffixIcon != null 
@@ -278,16 +340,18 @@ class TextFieldConfig {
                   color: suffixIconColor ?? Colors.grey.shade600,
                 ) 
               : null,
+          filled: true,
+          fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(22),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(22),
-            borderSide: const BorderSide(color: Color(0xFFFFD630)),
+            borderSide: const BorderSide(color: Color(0xFFFFD630), width: 1.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(22),
-            borderSide: const BorderSide(color: Color(0xFFFFD630), width: 2),
+            borderSide: const BorderSide(color: Color(0xFFFFD630), width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(22),
@@ -319,8 +383,83 @@ class TextFieldConfig {
         return 'Enter your name';
       case FieldType.multiline:
         return 'Enter your message';
+      case FieldType.dropdown:
+        return dropdownHint ?? 'Select an option';
       default:
         return null;
     }
+  }
+
+  /// Build the appropriate widget based on field type
+  Widget buildWidget({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    if (fieldType == FieldType.dropdown) {
+      return buildDropdownField(
+        currentValue: currentValue,
+        onChanged: onChanged,
+        validator: validator ?? defaultValidator,
+      );
+    } else {
+      return buildTextField(
+        currentValue: currentValue,
+        onChanged: onChanged,
+        validator: validator ?? defaultValidator,
+      );
+    }
+  }
+
+  /// Build dropdown field widget
+  Widget buildDropdownField({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DropdownButtonFormField<String>(
+        value: currentValue,
+        items: dropdownOptions?.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(
+              option,
+              style: dropdownStyle ?? const TextStyle(color: Colors.black),
+            ),
+          );
+        }).toList(),
+        onChanged: onChanged,
+        validator: validator,
+        decoration: getDecoration(),
+        dropdownColor: dropdownColor ?? Colors.white,
+        style: dropdownStyle ?? const TextStyle(color: Colors.black),
+        isExpanded: true,
+      ),
+    );
+  }
+
+  /// Build text field widget
+  Widget buildTextField({
+    String? currentValue,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        initialValue: currentValue ?? initialValue,
+        onChanged: onChanged,
+        validator: validator,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        obscureText: shouldObscureText,
+        maxLines: actualMaxLines,
+        maxLength: maxLength,
+        decoration: getDecoration(),
+        style: textStyle,
+      ),
+    );
   }
 }

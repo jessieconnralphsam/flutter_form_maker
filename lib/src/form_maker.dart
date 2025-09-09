@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'models/text_field_config.dart';
 
 class FormMaker extends StatefulWidget {
-  /// List of text field configurations
-  final List<TextFieldConfig> fields;
+  /// List of field configurations
+  final List<FieldConfig> fields;
   
   /// Callback when form values change
   final void Function(Map<String, String> values)? onChanged;
@@ -64,18 +64,22 @@ class _FormMakerState extends State<FormMaker> {
     _obscureTextStates = {};
     
     for (final field in widget.fields) {
-      final controller = TextEditingController(text: field.initialValue ?? '');
-      _controllers[field.key] = controller;
+      // Only create controllers for non-dropdown fields
+      if (field.fieldType != FieldType.dropdown) {
+        final controller = TextEditingController(text: field.initialValue ?? '');
+        _controllers[field.key] = controller;
+        
+        // Listen to changes for text fields
+        controller.addListener(() {
+          _values[field.key] = controller.text;
+          if (widget.onChanged != null) {
+            widget.onChanged!(_values);
+          }
+        });
+      }
+      
       _values[field.key] = field.initialValue ?? '';
       _obscureTextStates[field.key] = field.shouldObscureText;
-      
-      // Listen to changes
-      controller.addListener(() {
-        _values[field.key] = controller.text;
-        if (widget.onChanged != null) {
-          widget.onChanged!(_values);
-        }
-      });
     }
   }
 
@@ -102,25 +106,70 @@ class _FormMakerState extends State<FormMaker> {
     });
   }
 
-  Widget _buildTextField(TextFieldConfig config) {
-    final isPasswordField = config.fieldType == FieldType.password && !config.obscureText;
-    
-    return TextFormField(
-      controller: _controllers[config.key],
-      decoration: _buildDecoration(config, isPasswordField),
-      style: config.textStyle,
-      keyboardType: config.keyboardType,
-      obscureText: _obscureTextStates[config.key] ?? false,
-      maxLines: config.actualMaxLines,
-      maxLength: config.maxLength,
-      inputFormatters: config.inputFormatters,
-      validator: config.defaultValidator,
-      autovalidateMode: widget.autovalidateMode,
-      textCapitalization: _getTextCapitalization(config.fieldType),
+  void _handleFieldChange(String fieldKey, String? value) {
+    setState(() {
+      _values[fieldKey] = value ?? '';
+    });
+    if (widget.onChanged != null) {
+      widget.onChanged!(_values);
+    }
+  }
+
+  Widget _buildField(FieldConfig config) {
+    if (config.fieldType == FieldType.dropdown) {
+      return _buildDropdownField(config);
+    } else {
+      return _buildTextField(config);
+    }
+  }
+
+  Widget _buildDropdownField(FieldConfig config) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DropdownButtonFormField<String>(
+        value: _values[config.key]?.isEmpty == true ? null : _values[config.key],
+        items: config.dropdownOptions?.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(
+              option,
+              style: config.dropdownStyle ?? const TextStyle(color: Colors.black),
+            ),
+          );
+        }).toList(),
+        onChanged: (value) => _handleFieldChange(config.key, value),
+        validator: config.defaultValidator,
+        decoration: config.getDecoration(),
+        dropdownColor: config.dropdownColor ?? Colors.white,
+        style: config.dropdownStyle ?? const TextStyle(color: Colors.black),
+        isExpanded: true,
+        autovalidateMode: widget.autovalidateMode,
+      ),
     );
   }
 
-  InputDecoration _buildDecoration(TextFieldConfig config, bool isPasswordField) {
+  Widget _buildTextField(FieldConfig config) {
+    final isPasswordField = config.fieldType == FieldType.password && !config.obscureText;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TextFormField(
+        controller: _controllers[config.key],
+        decoration: _buildDecoration(config, isPasswordField),
+        style: config.textStyle,
+        keyboardType: config.keyboardType,
+        obscureText: _obscureTextStates[config.key] ?? false,
+        maxLines: config.actualMaxLines,
+        maxLength: config.maxLength,
+        inputFormatters: config.inputFormatters,
+        validator: config.defaultValidator,
+        autovalidateMode: widget.autovalidateMode,
+        textCapitalization: _getTextCapitalization(config.fieldType),
+      ),
+    );
+  }
+
+  InputDecoration _buildDecoration(FieldConfig config, bool isPasswordField) {
     final baseDecoration = config.getDecoration();
     
     // Add password visibility toggle if it's a password field
@@ -168,24 +217,27 @@ class _FormMakerState extends State<FormMaker> {
               padding: EdgeInsets.only(
                 bottom: index == widget.fields.length - 1 ? 0 : widget.fieldSpacing,
               ),
-              child: _buildTextField(field),
+              child: _buildField(field),
             );
           }),
           
           if (widget.showSubmitButton) ...[
             SizedBox(height: widget.fieldSpacing),
-            widget.submitButton ?? 
-            ElevatedButton(
-              onPressed: _handleSubmit,
-              style: widget.submitButtonStyle ?? ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD630),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: widget.submitButton ?? 
+              ElevatedButton(
+                onPressed: _handleSubmit,
+                style: widget.submitButtonStyle ?? ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD630),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                  ),
                 ),
+                child: Text(widget.submitButtonText),
               ),
-              child: Text(widget.submitButtonText),
             ),
           ],
         ],
@@ -204,22 +256,35 @@ class _FormMakerState extends State<FormMaker> {
     for (final controller in _controllers.values) {
       controller.clear();
     }
+    setState(() {
+      for (final field in widget.fields) {
+        _values[field.key] = '';
+      }
+    });
   }
 
   /// Reset form to initial values
   void reset() {
     for (final field in widget.fields) {
-      _controllers[field.key]?.text = field.initialValue ?? '';
+      if (field.fieldType != FieldType.dropdown) {
+        _controllers[field.key]?.text = field.initialValue ?? '';
+      }
       _values[field.key] = field.initialValue ?? '';
     }
     _formKey.currentState?.reset();
+    setState(() {});
   }
 
   /// Set value for a specific field
   void setValue(String fieldKey, String value) {
-    if (_controllers.containsKey(fieldKey)) {
-      _controllers[fieldKey]?.text = value;
-      _values[fieldKey] = value;
+    if (widget.fields.any((f) => f.key == fieldKey)) {
+      final field = widget.fields.firstWhere((f) => f.key == fieldKey);
+      if (field.fieldType != FieldType.dropdown) {
+        _controllers[fieldKey]?.text = value;
+      }
+      setState(() {
+        _values[fieldKey] = value;
+      });
     }
   }
 
