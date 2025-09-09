@@ -13,6 +13,10 @@ class TextFieldConfig {
   final String? Function(String? value)? validator;
   final InputDecoration? decoration;
   final TextStyle? textStyle;
+  final IconData? prefixIcon;
+  final IconData? suffixIcon;
+  final Color? prefixIconColor;
+  final Color? suffixIconColor;
 
   const TextFieldConfig({
     required this.key,
@@ -26,6 +30,10 @@ class TextFieldConfig {
     this.validator,
     this.decoration,
     this.textStyle,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.prefixIconColor,
+    this.suffixIconColor,
   });
 
   String? defaultValidator(String? value) {
@@ -43,23 +51,35 @@ class TextFieldConfig {
         InputDecoration(
           labelText: label,
           hintText: hintText,
-          labelStyle: const TextStyle(color: Colors.black),
+          labelStyle: const TextStyle(color:  Color(0xFFFFD630)),
           hintStyle: const TextStyle(color: Colors.black),
-          errorStyle: const TextStyle(color: Colors.black),
+          errorStyle: const TextStyle(color: Colors.red),
+          prefixIcon: prefixIcon != null 
+              ? Icon(
+                  prefixIcon,
+                  color: prefixIconColor ?? Colors.grey.shade600,
+                ) 
+              : null,
+          suffixIcon: suffixIcon != null 
+              ? Icon(
+                  suffixIcon,
+                  color: suffixIconColor ?? Colors.grey.shade600,
+                ) 
+              : null,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(22),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(22),
+            borderSide: BorderSide(color:  Color(0xFFFFD630)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.black, width: 2),
+            borderRadius: BorderRadius.circular(22),
+            borderSide: const BorderSide(color:  Color(0xFFFFD630), width: 2),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.black),
+            borderRadius: BorderRadius.circular(22),
+            borderSide: const BorderSide(color: Colors.red),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
