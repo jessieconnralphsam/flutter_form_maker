@@ -160,10 +160,16 @@ class _FormMakerState extends State<FormMaker> {
   }
 
   Widget _buildDateField(FieldConfig config) {
+    final controller = _controllers[config.key]!;
+
+    if (controller.text.isEmpty && config.initialDate != null) {
+      controller.text = config.formatDate(config.initialDate ?? DateTime.now());
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextFormField(
-        controller: _controllers[config.key],
+        controller: controller,
         onTap: () async {
           final DateTime? picked = await showDatePicker(
             context: context,
@@ -173,11 +179,9 @@ class _FormMakerState extends State<FormMaker> {
           );
           if (picked != null) {
             final formattedDate = config.formatDate(picked);
-            _controllers[config.key]?.text = formattedDate;
+            controller.text = formattedDate;
             _handleFieldChange(config.key, formattedDate);
-            if (config.onDateSelected != null) {
-              config.onDateSelected!(picked);
-            }
+            config.onDateSelected?.call(picked);
           }
         },
         validator: config.defaultValidator,
@@ -188,6 +192,7 @@ class _FormMakerState extends State<FormMaker> {
       ),
     );
   }
+
 
   Widget _buildDateTimeField(FieldConfig config) {
     return Padding(
@@ -348,7 +353,7 @@ class _FormMakerState extends State<FormMaker> {
           if (widget.showSubmitButton) ...[
             SizedBox(height: widget.fieldSpacing),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 1),
               child: widget.submitButton ?? 
               ElevatedButton(
                 onPressed: _handleSubmit,

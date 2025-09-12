@@ -617,28 +617,57 @@ class FieldConfig {
     required Function(String?) onChanged,
     String? Function(String?)? validator,
   }) {
+    final Set<String> placeholderValues = {
+      'Select a Country',
+      'Select a State',
+      'Select a Status',
+      'Select an Option',
+    };
+
+    final bool isPlaceholder = currentValue != null && placeholderValues.contains(currentValue);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: DropdownButtonFormField<String>(
-        value: currentValue,
+        value: isPlaceholder ? null : currentValue, // don't preselect placeholder
         items: dropdownOptions?.map((option) {
+          final isPlaceholder = placeholderValues.contains(option);
+
           return DropdownMenuItem<String>(
-            value: option,
+            value: option, // always assign the actual string
+            enabled: !isPlaceholder, // disable placeholder
             child: Text(
               option,
-              style: dropdownStyle ?? const TextStyle(color: Colors.black),
+              style: (dropdownStyle ?? const TextStyle(color: Colors.black)).copyWith(
+                color: isPlaceholder
+                    ? Colors.grey.shade400
+                    : (dropdownStyle?.color ?? Colors.black),
+                fontStyle: isPlaceholder ? FontStyle.italic : FontStyle.normal,
+              ),
             ),
           );
         }).toList(),
         onChanged: onChanged,
-        validator: validator,
+        validator: (value) {
+          if (value == null || placeholderValues.contains(value)) {
+            return 'Please select a valid option';
+          }
+          return validator?.call(value);
+        },
         decoration: getDecoration(),
         dropdownColor: dropdownColor ?? Colors.white,
         style: dropdownStyle ?? const TextStyle(color: Colors.black),
         isExpanded: true,
+        hint: isPlaceholder
+            ? Text(
+                currentValue, // show placeholder text as hint
+                style: TextStyle(color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+              )
+            : null,
       ),
     );
   }
+
 
   /// Build date field widget
   Widget buildDateField({
@@ -646,10 +675,13 @@ class FieldConfig {
     required Function(String?) onChanged,
     String? Function(String?)? validator,
   }) {
+    final String initialText = currentValue ??
+        (initialDate != null ? formatDate(initialDate!) : initialValue ?? '');
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextFormField(
-        controller: TextEditingController(text: currentValue ?? initialValue),
+        initialValue: initialText,
         onTap: () async {
           final context = _getCurrentContext();
           if (context != null) {
@@ -675,6 +707,7 @@ class FieldConfig {
       ),
     );
   }
+
 
   /// Build date-time field widget
   Widget buildDateTimeField({
