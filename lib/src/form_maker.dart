@@ -136,7 +136,7 @@ class _FormMakerState extends State<FormMaker> {
 
   Widget _buildDropdownField(FieldConfig config) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: DropdownButtonFormField<String>(
         value: _values[config.key]?.isEmpty == true ? null : _values[config.key],
         items: config.dropdownOptions?.map((option) {
@@ -161,7 +161,7 @@ class _FormMakerState extends State<FormMaker> {
 
   Widget _buildDateField(FieldConfig config) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextFormField(
         controller: _controllers[config.key],
         onTap: () async {
@@ -191,7 +191,7 @@ class _FormMakerState extends State<FormMaker> {
 
   Widget _buildDateTimeField(FieldConfig config) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextFormField(
         controller: _controllers[config.key],
         onTap: () async {
@@ -238,7 +238,7 @@ class _FormMakerState extends State<FormMaker> {
 
   Widget _buildTimeField(FieldConfig config) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextFormField(
         controller: _controllers[config.key],
         onTap: () async {
@@ -276,7 +276,7 @@ class _FormMakerState extends State<FormMaker> {
     final isPasswordField = config.fieldType == FieldType.password && !config.obscureText;
     
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextFormField(
         controller: _controllers[config.key],
         decoration: _buildDecoration(config, isPasswordField),
