@@ -363,8 +363,8 @@ class FieldConfig {
   }
 
   String? _validatePhone(String value) {
-    if (value.length < 10) {
-      return 'Phone number must be at least 10 digits';
+    if (value.length > 16) {
+      return 'Please provide a valid phone number';
     }
     return null;
   }
@@ -409,7 +409,10 @@ class FieldConfig {
     return null;
   }
 
-  String? _validateDropdown(String value) {
+  String? _validateDropdown(String? value) {
+    if (value == null || value == 'Select a Status') {
+      return 'Please select a status';
+    }
     if (dropdownOptions != null && !dropdownOptions!.contains(value)) {
       return 'Please select a valid option';
     }
